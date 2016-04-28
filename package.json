@@ -1,0 +1,30 @@
+{
+  "name": "asterisk-ami-test-server",
+  "version": "0.0.1",
+  "description": "Asterisk Ami Test Server for NodeJS (ES2015)",
+  "main": "./src/index.js",
+  "dependencies": {
+    "co": "^4.6.0",
+    "config": "^1.12.0",
+    "debug": "^2.2.0",
+    "shortid": "^2.1.3",
+    "yargs": "^4.6.0",
+    "asterisk-ami-event-utils": "^2.0",
+    "asterisk-ami-events-stream": "^1.0",
+    "fs-ami-event-provider": "^1.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node ./bin/amiserver",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:BelirafoN/asterisk-ami-test-server.git"
+  },
+  "author": {
+    "name": "Alex Voronyansky",
+    "email": "belirafon@gmail.com"
+  },
+  "license": "MIT"
+}
