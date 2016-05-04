@@ -7,6 +7,7 @@
 "use strict";
 
 const AmiTestServer = require('../lib/AmiTestServer');
+const assert = require('assert');
 const net = require('net');
 const CRLF = '\r\n';
 
@@ -66,7 +67,7 @@ describe('AmiTestServer internal functionality', function() {
         server.listen(defaultPort).then(() => {
             client = net.connect({port: defaultPort}, () => {
                 client
-                    .on('data', chunk => {
+                    .once('data', chunk => {
                         if(/Response: Success/.test(chunk.toString())){
                             done();
                         }
@@ -84,7 +85,7 @@ describe('AmiTestServer internal functionality', function() {
         server.listen(defaultPort).then(() => {
             client = net.connect({port: defaultPort}, () => {
                 client
-                    .on('data', chunk => {
+                    .once('data', chunk => {
                         if(/Response: Error/.test(chunk.toString())){
                             done();
                         }
@@ -96,6 +97,152 @@ describe('AmiTestServer internal functionality', function() {
                     ].join(CRLF) + CRLF.repeat(2));
             });
         });
-    })
+    });
+
+    it('Get server clients', done => {
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                client
+                    .once('data', chunk => {
+                        if(/Response: Success/.test(chunk.toString())){
+                            assert.equal(server.getClients().length, 1);
+                            done();
+                        }
+                    })
+                    .write([
+                            'Action: Login',
+                            `Username: ${optionsDefault.credentials.username}`,
+                            `Secret: ${optionsDefault.credentials.secret}`
+                        ].join(CRLF) + CRLF.repeat(2));
+            });
+        });
+    });
+
+    it('Ping action', done => {
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                client
+                    .once('data', chunk => {
+                        if(/Response: Success/.test(chunk.toString())){
+
+                            client
+                                .once('data', chunk => {
+                                    let str = chunk.toString();
+                                    assert.ok(/Response: Success/.test(str));
+                                    assert.ok(/Ping: Pong/.test(str));
+                                    assert.ok(/ActionID: testID/.test(str));
+                                    assert.ok(/Timestamp: \d{10}\.\d{6}/.test(str));
+                                    done();
+                                }).write([
+                                    'Action: Ping',
+                                    'ActionID: testID'
+                                ].join(CRLF) + CRLF.repeat(2));
+
+                        }
+                    })
+                    .write([
+                            'Action: Login',
+                            `Username: ${optionsDefault.credentials.username}`,
+                            `Secret: ${optionsDefault.credentials.secret}`
+                        ].join(CRLF) + CRLF.repeat(2));
+            });
+        });
+    });
+
+    it('Logoff action', done => {
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                client
+                    .once('data', chunk => {
+                        if(/Response: Success/.test(chunk.toString())){
+
+                            client
+                                .once('data', chunk => {
+                                    let str = chunk.toString();
+                                    assert.equal(str, [
+                                            'Response: Goodbye',
+                                            'Message: Thanks for all the fish.',
+                                            'ActionID: logoff_123'
+                                        ].join(CRLF) + CRLF.repeat(2));
+                                    done();
+                                }).write([
+                                    'Action: Logoff',
+                                    'ActionID: logoff_123'
+                                ].join(CRLF) + CRLF.repeat(2));
+
+                        }
+                    })
+                    .write([
+                            'Action: Login',
+                            `Username: ${optionsDefault.credentials.username}`,
+                            `Secret: ${optionsDefault.credentials.secret}`
+                        ].join(CRLF) + CRLF.repeat(2));
+            });
+        });
+    });
+
+    it('Action without name (empty)', done => {
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                client
+                    .once('data', chunk => {
+                        if(/Response: Success/.test(chunk.toString())){
+
+                            client
+                                .once('data', chunk => {
+                                    let str = chunk.toString();
+                                    assert.equal(str, [
+                                            'Response: Error',
+                                            'Message: Missing action in request',
+                                            'ActionID: empty_123'
+                                        ].join(CRLF) + CRLF.repeat(2));
+                                    done();
+                                }).write([
+                                    'Action: ',
+                                    'ActionID: empty_123'
+                                ].join(CRLF) + CRLF.repeat(2));
+
+                        }
+                    })
+                    .write([
+                            'Action: Login',
+                            `Username: ${optionsDefault.credentials.username}`,
+                            `Secret: ${optionsDefault.credentials.secret}`
+                        ].join(CRLF) + CRLF.repeat(2));
+            });
+        });
+    });
+
+    it('Not support action', done => {
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                client
+                    .once('data', chunk => {
+                        if(/Response: Success/.test(chunk.toString())){
+
+                            client
+                                .once('data', chunk => {
+                                    let str = chunk.toString();
+                                    assert.equal(str, [
+                                            'Response: Error',
+                                            'Message: Invalid/unknown command',
+                                            'ActionID: nosupport_123'
+                                        ].join(CRLF) + CRLF.repeat(2));
+                                    done();
+                                }).write([
+                                    'Action: nosupport',
+                                    'ActionID: nosupport_123'
+                                ].join(CRLF) + CRLF.repeat(2));
+
+                        }
+                    })
+                    .write([
+                            'Action: Login',
+                            `Username: ${optionsDefault.credentials.username}`,
+                            `Secret: ${optionsDefault.credentials.secret}`
+                        ].join(CRLF) + CRLF.repeat(2));
+            });
+        });
+    });
     
 });
