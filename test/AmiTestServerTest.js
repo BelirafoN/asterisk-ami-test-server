@@ -63,6 +63,27 @@ describe('AmiTestServer internal functionality', function() {
         });
     });
 
+    it('Check limit of authClients', done => {
+        optionsDefault.maxConnections = 1;
+        server = new AmiTestServer(optionsDefault);
+
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                let client2 = net.connect({port: defaultPort});
+                client2
+                    .on('close', () => {
+                        client2.destroy();
+                        client2.removeAllListeners();
+                        done();
+                    })
+                    .on('error', () => {
+                        client2.destroy();
+                        client2.removeAllListeners();
+                    });
+            });
+        });
+    });
+
     it('Auth with correct credentials', done => {
         server.listen(defaultPort).then(() => {
             client = net.connect({port: defaultPort}, () => {
@@ -99,13 +120,13 @@ describe('AmiTestServer internal functionality', function() {
         });
     });
 
-    it('Get server clients', done => {
+    it('Get server authClients', done => {
         server.listen(defaultPort).then(() => {
             client = net.connect({port: defaultPort}, () => {
                 client
                     .once('data', chunk => {
                         if(/Response: Success/.test(chunk.toString())){
-                            assert.equal(server.getClients().length, 1);
+                            assert.equal(server.getAuthClients().length, 1);
                             done();
                         }
                     })
@@ -118,7 +139,68 @@ describe('AmiTestServer internal functionality', function() {
         });
     });
 
-    it('Ping action', done => {
+    it('Get server unAuthClients', done => {
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                setTimeout(() => {
+                    assert.equal(server.getUnAuthClients().length, 1);
+                    done();
+                }, 1);
+            });
+        });
+    });
+
+    it('Get server total clients', done => {
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                client
+                    .once('data', chunk => {
+                        if(/Response: Success/.test(chunk.toString())){
+
+                            let client2 = net.connect({port: defaultPort}, () => {
+                                setTimeout(() => {
+                                    assert.equal(server.getClients().length, 2);
+                                    client2.destroy();
+                                    client2.removeAllListeners();
+                                    done();
+                                }, 1);
+                            });
+
+                            client2.on('error', () => {
+                                client2.destroy();
+                                client2.removeAllListeners();
+                            });
+                        }
+                    })
+                    .write([
+                            'Action: Login',
+                            `Username: ${optionsDefault.credentials.username}`,
+                            `Secret: ${optionsDefault.credentials.secret}`
+                        ].join(CRLF) + CRLF.repeat(2));
+            });
+        });
+    });
+
+    it('Ping action before auth', done => {
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                client
+                    .once('data', chunk => {
+                        let str = chunk.toString();
+                        assert.ok(/Response: Success/.test(str));
+                        assert.ok(/Ping: Pong/.test(str));
+                        assert.ok(/ActionID: testID/.test(str));
+                        // assert.ok(/Timestamp: \d{10}\.\d{6}/.test(str));
+                        done();
+                    }).write([
+                        'Action: Ping',
+                        'ActionID: testID'
+                    ].join(CRLF) + CRLF.repeat(2));
+            });
+        });
+    });
+
+    it('Ping action after auth', done => {
         server.listen(defaultPort).then(() => {
             client = net.connect({port: defaultPort}, () => {
                 client
@@ -131,7 +213,7 @@ describe('AmiTestServer internal functionality', function() {
                                     assert.ok(/Response: Success/.test(str));
                                     assert.ok(/Ping: Pong/.test(str));
                                     assert.ok(/ActionID: testID/.test(str));
-                                    assert.ok(/Timestamp: \d{10}\.\d{6}/.test(str));
+                                    // assert.ok(/Timestamp: \d{10}\.\d{6}/.test(str));
                                     done();
                                 }).write([
                                     'Action: Ping',
@@ -244,5 +326,30 @@ describe('AmiTestServer internal functionality', function() {
             });
         });
     });
-    
+
+    it('Server broadcast event', done => {
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                client
+                    .once('data', chunk => {
+                        if(/Response: Success/.test(chunk.toString())){
+
+                            client
+                                .once('data', chunk => {
+                                    let str = chunk.toString();
+                                    assert.equal(str, 'Event: TestEvent' + CRLF.repeat(2));
+                                    done();
+                                });
+                            server.broadcast('Event: TestEvent' + CRLF.repeat(2));
+                        }
+                    })
+                    .write([
+                            'Action: Login',
+                            `Username: ${optionsDefault.credentials.username}`,
+                            `Secret: ${optionsDefault.credentials.secret}`
+                        ].join(CRLF) + CRLF.repeat(2));
+            });
+        });
+    });
+
 });
