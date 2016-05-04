@@ -20,8 +20,8 @@ support `>=4.0.0`
 Server
 
 ```javascript
-const AmiSurrogateServer = require('asterisk-ami-test-server');
-const server = new AmiSurrogateServer({
+const AmiTestServer = require('asterisk-ami-test-server');
+const server = new AmiTestServer({
     maxConnections: 50,
     authTimeout: 30000,
     credentials: {
