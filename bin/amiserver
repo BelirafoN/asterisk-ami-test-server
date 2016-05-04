@@ -9,69 +9,35 @@
 "use strict";
 
 let argv = require('yargs').argv;
-const debugLog = require('debug')('server');
-const errorLog = require('debug')('server:error');
-const config = require('config');
-const co = require('co');
-const sysConf = config.get('system');
-const eventsConf = config.get('events');
-const serverConf = config.get('server');
-const amiUtils = require('asterisk-ami-event-utils');
-let eventIndex = 0;
+const AmiSurrogateServer = require('../lib/AmiTestServer');
+const meta = require('../package.json');
+const defaultOptions = {
+    port: 5038,
+    authTimeout: 30000,
+    defaultOptions: 50,
+    credentials: {
+        username: 'test',
+        secret: 'test'
+    }
+};
 
 if(argv.help){
-    console.log(`-`.repeat(35));
-    console.log(`| asterisk ami development server |`.toUpperCase());
-    console.log(`-`.repeat(35));
+    console.log(`-`.repeat(36));
+    console.log(`| asterisk ami test server `.toUpperCase() + `v${meta.version} |`);
+    console.log(`-`.repeat(36));
     console.log();
-    console.log(`* --port - listening port, default ${serverConf.port}`);
-    console.log(`* --auth-timeout - authorization timeout, default ${serverConf.options.authTimeout} ms`);
-    console.log(`* --max-connections - max count of client connections, default ${serverConf.options.maxConnections}`);
+    console.log(`* --port - listening port, default ${defaultOptions.port}`);
+    console.log(`* --username - username for auth on server, default '${defaultOptions.credentials.username}'`);
+    console.log(`* --secret - secret for auth on server, default '${defaultOptions.credentials.secret}'`);
+    console.log(`* --auth-timeout - authorization timeout, default ${defaultOptions.authTimeout} ms`);
+    console.log(`* --max-clients - max count of client connections, default ${defaultOptions.maxConnections}`);
     return;
 }
 
-let serverParams = Object.keys(argv).reduce((result, curr) => {
-    if(~Object.keys(serverConf.options).indexOf(curr)){
-        result[curr] = argv[curr];
-    }
+let options = Object.keys(defaultOptions).reduce((result, key) => {
+    result[key] = argv[key] ? argv[key] : defaultOptions[key];
     return result;
 }, {});
 
-const server = require('../server').createServer(
-    serverConf.message,
-    serverConf.credentials,
-    Object.assign({}, serverConf.options, serverParams)
-);
-
-co(function* (){
-    let testServer = yield server.listen(argv.port || serverConf.port),
-        eventProvider = new eventsConf.provider;
-
-    eventProvider
-        .on('event', event => {
-            debugLog(`eventIndex ${++eventIndex}`);
-            if(event.Event && sysConf.allowEvents){
-                let eventName = event.Event.toString().toLowerCase().trim();
-                if(!sysConf.allowEvents[eventName]){ return; }
-            }
-            testServer.broadcast(amiUtils.stringify(event));
-        })
-        .on('error', errorLog)
-        .on('end', () => {
-            debugLog('events ended.');
-            eventProvider.destroy();
-        })
-        .on('close', () => debugLog('closed'));
-
-    testServer.on('connection', connectionsCount => {
-        if(sysConf.controlConnectionsCount == connectionsCount){
-            testServer.removeAllListeners('connection');
-            debugLog(`event provider initialization...`);
-            eventProvider.init(eventsConf.options).catch(errorLog);
-        }
-    })
-
-}).catch(error => {
-    console.log(error);
-    process.exit(1);
-});
+new AmiSurrogateServer(options).listen(options.port)
+    .catch(error => console.log(error));

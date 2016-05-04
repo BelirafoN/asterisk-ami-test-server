@@ -1,11 +1,11 @@
 {
   "name": "asterisk-ami-test-server",
   "version": "0.0.1",
-  "description": "Asterisk Ami Surrugate Server for NodeJS (ES2015)",
+  "description": "Asterisk Ami Test Server for NodeJS (ES2015)",
   "engines": {
     "node": ">=4.0"
   },
-  "main": "./lib/AmiSurrogateServer.js",
+  "main": "./lib/AmiTestServer.js",
   "bin": {
     "amiserver": "./bin/amiserver"
   },
@@ -17,7 +17,11 @@
     "asterisk-ami-event-utils": "^2.0",
     "asterisk-ami-events-stream": "^1.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "coveralls": "^2.11.9",
+    "istanbul": "^0.4.3",
+    "mocha": "^2.4.5"
+  },
   "scripts": {
     "start": "node ./bin/amiserver",
     "test": "echo \"Error: no test specified\" && exit 1"
