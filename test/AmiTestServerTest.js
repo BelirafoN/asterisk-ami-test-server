@@ -21,6 +21,7 @@ describe('AmiTestServer internal functionality', function() {
 
     beforeEach(() => {
         optionsDefault = {
+            silent: true,
             maxConnections: 50,
             authTimeout: 30000,
             credentials: {
