@@ -30,6 +30,7 @@ describe('AmiTestServer internal functionality', function() {
             }
         };
         server = new AmiTestServer(optionsDefault);
+        server._helloMessage = null
     });
 
     afterEach(() => {
@@ -81,6 +82,24 @@ describe('AmiTestServer internal functionality', function() {
                         client2.destroy();
                         client2.removeAllListeners();
                     });
+            });
+        });
+    });
+
+    it('Check Welcome message', done => {
+        server._helloMessage = "Asterisk AMI Test Server/X.X";
+        server.listen(defaultPort).then(() => {
+            client = net.connect({port: defaultPort}, () => {
+                client
+                    .once('data', chunk => {
+                        assert.ok(/Asterisk AMI Test Server\/X\.X/.test(chunk.toString()));
+                        done();
+                    })
+                    .write([
+                        'Action: Login',
+                        `Username: ${optionsDefault.credentials.username}`,
+                        `Secret: ${optionsDefault.credentials.secret}`
+                    ].join(CRLF) + CRLF.repeat(2));
             });
         });
     });
